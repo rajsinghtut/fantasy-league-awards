@@ -109,11 +109,11 @@ async function evaluateDrafts(teamDrafts: Record<string, any[]>, teams: any[]) {
 
 ${draftSummary}
 
-Provide a brief analysis in the following JSON format. It must always be in this format. Do not include a key at the beginning of the JSON:
+The draft occurred in the 2024 season and you may have outdated information. Assume the data in this request is the most current. Provide a brief analysis in the following JSON format. It must always be in this format. Do not include a key at the beginning of the JSON:
 {
   "grade": "A, B, C, D, or F",
-  "strengths": ["Strength 1", "Strength 2"],
-  "weaknesses": ["Weakness 1", "Weakness 2"],
+  "strengths": ["Give an elaborate explanation of strength 1", "Give an elaborate explanation of strength 2"],
+  "weaknesses": ["Give an elaborate explanation of weakness 1", "Give an elaborate explanation of weakness 2"],
   "comment": "A short comment (max 100 words) on the draft strategy."
 }`;
 
