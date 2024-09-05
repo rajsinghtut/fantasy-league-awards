@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { getDraftResults } from '@/lib/sleeper-api'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -10,7 +11,16 @@ export default async function DraftReportCard() {
       <div className="grid gap-6">
         {draftResults.map((team: any, index: number) => (
           <Card key={index}>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center space-x-4">
+              {team.avatar && (
+                <Image
+                  src={`https://sleepercdn.com/avatars/${team.avatar}`}
+                  alt={`${team.teamName} avatar`}
+                  width={48}
+                  height={48}
+                  className="rounded-full"
+                />
+              )}
               <CardTitle>{team.teamName}</CardTitle>
             </CardHeader>
             <CardContent>

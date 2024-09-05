@@ -38,7 +38,14 @@ export async function getDraftResults() {
   if (existingPicks.length > 0) {
     console.log('Using existing draft results from database');
     const teamDrafts = groupPicksByTeam(existingPicks);
-    return await getEvaluations(teamDrafts, teams);
+    const evaluations = await getEvaluations(teamDrafts, teams);
+    return evaluations.map((evaluation: any) => {
+      const team = teams.find((t: any) => t.id === evaluation.teamId);
+      return {
+        ...evaluation,
+        avatar: team?.avatar
+      };
+    });
   }
 
   console.log('Fetching new draft results');
@@ -62,11 +69,7 @@ export async function getDraftResults() {
     })),
   });
 
-  console.log("draft picks: ", draftPicks)
-
   const teamDrafts = groupPicksByTeam(draftPicks);
-  console.log("team drafts: ", teamDrafts)
-  console.log("teams: ", teams)
   return await evaluateDrafts(teamDrafts, teams);
 }
 
@@ -94,16 +97,7 @@ async function evaluateDrafts(teamDrafts: Record<string, any[]>, teams: any[]) {
   for (const [teamId, picks] of Object.entries(teamDrafts)) {
     const team = teams.find(t => t.id === teamId);
     const teamName = team ? team.name : `Team ${teamId}`;
-
-    // Debugging: Log picks
-    console.log(`Picks for team ${teamName}:`, picks);
-
-    // const draftSummary = picks.map(pick => `Round ${pick.round}: ${pick.playerName} (${pick.position} - ${pick.team})`).join('\n');
-    const draftSummary = picks.map(pick => `Round ${pick.round}: ${pick.metadata.first_name} ${pick.metadata.last_name} (${pick.metadata.position} - ${pick.metadata.team})`).join('\n');
-
-    // Debugging: Log draftSummary
-    console.log(`Draft summary for team ${teamName}:`, draftSummary);
-
+    const draftSummary = picks.map(pick => `Round ${pick.round}: ${pick.metadata.first_name} ${pick.metadata.last_name} (${pick.metadata.position} - ${pick.metadata.team})`).join('\n')
     const prompt = `Evaluate the following fantasy football draft for ${teamName}:
 
 ${draftSummary}
