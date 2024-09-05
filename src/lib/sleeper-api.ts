@@ -5,14 +5,40 @@ const LEAGUE_ID = '1124820424132165632';
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const prisma = new PrismaClient();
 
+async function getTeamInfo() {
+  const existingTeams = await prisma.team.findMany();
+  
+  if (existingTeams.length > 0) {
+    console.log('Using existing team info from database');
+    return existingTeams;
+  }
+
+  console.log('Fetching new team info');
+  const response = await fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID}/users`);
+  const users = await response.json();
+
+  const teams = users.map((user: any) => ({
+    id: user.user_id,
+    name: user.display_name,
+    avatar: user.avatar,
+  }));
+
+  await prisma.team.createMany({
+    data: teams,
+  });
+
+  return teams;
+}
+
 export async function getDraftResults() {
   // Check if we already have draft results in the database
   const existingPicks = await prisma.draftPick.findMany();
+  const teams = await getTeamInfo();
   
   if (existingPicks.length > 0) {
     console.log('Using existing draft results from database');
     const teamDrafts = groupPicksByTeam(existingPicks);
-    return await getEvaluations(teamDrafts);
+    return await getEvaluations(teamDrafts, teams);
   }
 
   console.log('Fetching new draft results');
@@ -36,8 +62,12 @@ export async function getDraftResults() {
     })),
   });
 
+  console.log("draft picks: ", draftPicks)
+
   const teamDrafts = groupPicksByTeam(draftPicks);
-  return await evaluateDrafts(teamDrafts);
+  console.log("team drafts: ", teamDrafts)
+  console.log("teams: ", teams)
+  return await evaluateDrafts(teamDrafts, teams);
 }
 
 function groupPicksByTeam(draftPicks: any) {
@@ -51,7 +81,7 @@ function groupPicksByTeam(draftPicks: any) {
   return teamDrafts;
 }
 
-async function evaluateDrafts(teamDrafts: Record<string, any[]>) {
+async function evaluateDrafts(teamDrafts: Record<string, any[]>, teams: any[]) {
   const existingEvaluations = await prisma.draftEvaluation.findMany();
   
   if (existingEvaluations.length > 0) {
@@ -62,9 +92,19 @@ async function evaluateDrafts(teamDrafts: Record<string, any[]>) {
   console.log('Generating new evaluations');
   const evaluatedDrafts = [];
   for (const [teamId, picks] of Object.entries(teamDrafts)) {
+    const team = teams.find(t => t.id === teamId);
+    const teamName = team ? team.name : `Team ${teamId}`;
+
+    // Debugging: Log picks
+    console.log(`Picks for team ${teamName}:`, picks);
+
+    // const draftSummary = picks.map(pick => `Round ${pick.round}: ${pick.playerName} (${pick.position} - ${pick.team})`).join('\n');
     const draftSummary = picks.map(pick => `Round ${pick.round}: ${pick.metadata.first_name} ${pick.metadata.last_name} (${pick.metadata.position} - ${pick.metadata.team})`).join('\n');
-    
-    const prompt = `Evaluate the following fantasy football draft for a team:
+
+    // Debugging: Log draftSummary
+    console.log(`Draft summary for team ${teamName}:`, draftSummary);
+
+    const prompt = `Evaluate the following fantasy football draft for ${teamName}:
 
 ${draftSummary}
 
@@ -76,7 +116,7 @@ Provide a brief analysis in the following JSON format. It must always be in this
   "comment": "A short comment (max 100 words) on the draft strategy."
 }`;
 
-    console.log("Here is the prompt: ", prompt)
+    console.log("Here is the prompt: ", prompt);
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -92,6 +132,7 @@ Provide a brief analysis in the following JSON format. It must always be in this
         const evaluation = await prisma.draftEvaluation.create({
           data: {
             teamId,
+            teamName,
             grade,
             strengths: strengths.join(', '),
             weaknesses: weaknesses.join(', '),
@@ -109,7 +150,7 @@ Provide a brief analysis in the following JSON format. It must always be in this
   return evaluatedDrafts;
 }
 
-async function getEvaluations(teamDrafts: Record<string, any[]>) {
+async function getEvaluations(teamDrafts: Record<string, any[]>, teams: any[]) {
   const evaluations = await prisma.draftEvaluation.findMany();
   return evaluations.map((evaluation: any) => ({
     ...evaluation,

@@ -19,9 +19,17 @@ model DraftPick {
   createdAt  DateTime @default(now())
 }
 
+model Team {
+  id        String   @id
+  name      String
+  avatar    String?
+  createdAt DateTime @default(now())
+}
+
 model DraftEvaluation {
   id         Int      @id @default(autoincrement())
   teamId     String
+  teamName   String
   grade      String
   strengths  String
   weaknesses String

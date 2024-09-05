@@ -11,7 +11,7 @@ export default async function DraftReportCard() {
         {draftResults.map((team: any, index: number) => (
           <Card key={index}>
             <CardHeader>
-              <CardTitle>{team.name}</CardTitle>
+              <CardTitle>{team.teamName}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-lg font-semibold">Grade: {team.grade}</p>
