@@ -10,6 +10,7 @@ export async function getDraftResults() {
 
   const draftResponse = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
   const draftPicks = await draftResponse.json();
+  console.log(draftPicks);
 
   const teamDrafts = groupPicksByTeam(draftPicks);
   const evaluatedDrafts = await evaluateDrafts(teamDrafts);
@@ -37,31 +38,34 @@ async function evaluateDrafts(teamDrafts: Record<string, any[]>) {
 
 ${draftSummary}
 
-Provide a brief analysis including:
-1. Overall grade (A, B, C, D, or F)
-2. Two key strengths
-3. Two key weaknesses
-4. A short comment (max 50 words) on the draft strategy`;
+Provide a brief analysis in the following JSON format:
+{
+  "grade": "A, B, C, D, or F",
+  "strengths": ["Strength 1", "Strength 2"],
+  "weaknesses": ["Weakness 1", "Weakness 2"],
+  "comment": "A short comment (max 50 words) on the draft strategy"
+}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
     });
 
     const analysis = completion.choices[0].message.content;
     if (analysis) {
-      const [grade, ...rest] = analysis.split('\n');
-      const strengths = rest.find((line: string) => line.startsWith('Strengths:'))?.split(':')[1]?.split(',').map((s: string) => s.trim()) ?? [];
-      const weaknesses = rest.find((line: string) => line.startsWith('Weaknesses:'))?.split(':')[1]?.split(',').map((s: string) => s.trim()) ?? [];
-      const comment = rest.find((line: string) => line.startsWith('Comment:'))?.split(':')[1]?.trim() ?? '';
-
-      evaluatedDrafts.push({
-        name: `Team ${teamId}`, // You might want to fetch actual team names if available
-        grade: grade.split(':')[1].trim(),
-        strengths,
-        weaknesses,
-        comment,
-      });
+      try {
+        const response = JSON.parse(analysis);
+        const { grade, strengths, weaknesses, comment } = response;
+        evaluatedDrafts.push({
+          name: `Team ${teamId}`, // You might want to fetch actual team names if available
+          grade,
+          strengths,
+          weaknesses,
+          comment,
+        });
+      } catch (error) {
+        console.error('Error parsing OpenAI response:', error);
+      }
     } else {
       console.error('No analysis received from OpenAI');
       // You might want to return a default or error state here
