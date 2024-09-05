@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model DraftPick {
+  id         Int      @id @default(autoincrement())
+  pickNumber Int
+  playerId   String
+  playerName String
+  position   String
+  team       String
+  draftedBy  String
+  round      Int
+  createdAt  DateTime @default(now())
+}
+
+model DraftEvaluation {
+  id         Int      @id @default(autoincrement())
+  teamId     String
+  grade      String
+  strengths  String
+  weaknesses String
+  comment    String
+  createdAt  DateTime @default(now())
+}

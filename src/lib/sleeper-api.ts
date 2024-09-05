@@ -1,9 +1,21 @@
 import OpenAI from 'openai';
+import { PrismaClient } from '@prisma/client';
 
 const LEAGUE_ID = '1124820424132165632';
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const prisma = new PrismaClient();
 
 export async function getDraftResults() {
+  // Check if we already have draft results in the database
+  const existingPicks = await prisma.draftPick.findMany();
+  
+  if (existingPicks.length > 0) {
+    console.log('Using existing draft results from database');
+    const teamDrafts = groupPicksByTeam(existingPicks);
+    return await getEvaluations(teamDrafts);
+  }
+
+  console.log('Fetching new draft results');
   const response = await fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID}`);
   const leagueData = await response.json();
   const draftId = leagueData.draft_id;
@@ -11,10 +23,21 @@ export async function getDraftResults() {
   const draftResponse = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
   const draftPicks = await draftResponse.json();
 
-  const teamDrafts = groupPicksByTeam(draftPicks);
-  const evaluatedDrafts = await evaluateDrafts(teamDrafts);
+  // Save draft picks to database
+  await prisma.draftPick.createMany({
+    data: draftPicks.map((pick: any) => ({
+      pickNumber: pick.pick_no,
+      playerId: pick.player_id,
+      playerName: `${pick.metadata.first_name} ${pick.metadata.last_name}`,
+      position: pick.metadata.position,
+      team: pick.metadata.team,
+      draftedBy: pick.picked_by,
+      round: pick.round,
+    })),
+  });
 
-  return evaluatedDrafts;
+  const teamDrafts = groupPicksByTeam(draftPicks);
+  return await evaluateDrafts(teamDrafts);
 }
 
 function groupPicksByTeam(draftPicks: any) {
@@ -29,6 +52,14 @@ function groupPicksByTeam(draftPicks: any) {
 }
 
 async function evaluateDrafts(teamDrafts: Record<string, any[]>) {
+  const existingEvaluations = await prisma.draftEvaluation.findMany();
+  
+  if (existingEvaluations.length > 0) {
+    console.log('Using existing evaluations from database');
+    return existingEvaluations;
+  }
+
+  console.log('Generating new evaluations');
   const evaluatedDrafts = [];
   for (const [teamId, picks] of Object.entries(teamDrafts)) {
     const draftSummary = picks.map(pick => `Round ${pick.round}: ${pick.metadata.first_name} ${pick.metadata.last_name} (${pick.metadata.position} - ${pick.metadata.team})`).join('\n');
@@ -37,13 +68,15 @@ async function evaluateDrafts(teamDrafts: Record<string, any[]>) {
 
 ${draftSummary}
 
-Provide a brief analysis in the following JSON format:
+Provide a brief analysis in the following JSON format. It must always be in this format. Do not include a key at the beginning of the JSON:
 {
   "grade": "A, B, C, D, or F",
   "strengths": ["Strength 1", "Strength 2"],
   "weaknesses": ["Weakness 1", "Weakness 2"],
-  "comment": "A short comment (max 50 words) on the draft strategy"
+  "comment": "A short comment (max 100 words) on the draft strategy."
 }`;
+
+    console.log("Here is the prompt: ", prompt)
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -51,26 +84,38 @@ Provide a brief analysis in the following JSON format:
     });
 
     const analysis = completion.choices[0].message.content;
+    console.log("here is the output from openai: ", analysis);
     if (analysis) {
       try {
         const response = JSON.parse(analysis);
         const { grade, strengths, weaknesses, comment } = response;
-        evaluatedDrafts.push({
-          name: `Team ${teamId}`, // You might want to fetch actual team names if available
-          grade,
-          strengths,
-          weaknesses,
-          comment,
+        const evaluation = await prisma.draftEvaluation.create({
+          data: {
+            teamId,
+            grade,
+            strengths: strengths.join(', '),
+            weaknesses: weaknesses.join(', '),
+            comment,
+          },
         });
+        evaluatedDrafts.push(evaluation);
       } catch (error) {
         console.error('Error parsing OpenAI response:', error);
       }
     } else {
       console.error('No analysis received from OpenAI');
-      // You might want to return a default or error state here
     }
   }
   return evaluatedDrafts;
+}
+
+async function getEvaluations(teamDrafts: Record<string, any[]>) {
+  const evaluations = await prisma.draftEvaluation.findMany();
+  return evaluations.map((evaluation: any) => ({
+    ...evaluation,
+    strengths: evaluation.strengths.split(', '),
+    weaknesses: evaluation.weaknesses.split(', '),
+  }));
 }
 
 export async function getBeltHolder() {
