@@ -160,18 +160,6 @@ async function getEvaluations(teamDrafts: Record<string, any[]>, teams: any[]) {
   }));
 }
 
-export async function getBeltHolder() {
-  const response = await fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID}/matchups/1`)
-  const matchups = await response.json()
-
-  // Implement logic to determine the current belt holder
-  // This is a simplified example
-  return {
-    name: 'Team Awesome',
-    weekAcquired: 1
-  }
-}
-
 export async function getPowerRankings() {
   const response = await fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID}/rosters`)
   const rosters = await response.json()

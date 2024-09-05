@@ -36,3 +36,19 @@ model DraftEvaluation {
   comment    String
   createdAt  DateTime @default(now())
 }
+
+model BeltHolder {
+  id           Int      @id @default(autoincrement())
+  teamId       String
+  teamName     String
+  weekAcquired Int
+  currentStreak Int
+  createdAt    DateTime @default(now())
+}
+
+model LongestStreak {
+  id       Int    @id @default(autoincrement())
+  teamId   String
+  teamName String
+  streak   Int
+}
