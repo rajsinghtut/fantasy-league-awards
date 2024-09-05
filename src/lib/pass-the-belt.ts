@@ -4,10 +4,12 @@ const LEAGUE_ID = '1124820424132165632';
 const prisma = new PrismaClient();
 
 interface BeltHolder {
+    id: number;
     teamId: string;
     teamName: string;
     weekAcquired: number;
     currentStreak: number;
+    createdAt: Date;
   }
   
   interface LongestStreak {
@@ -58,28 +60,24 @@ interface BeltHolder {
     if (opponent.points > beltHolderMatchup.points) {
       // The belt holder was defeated, pass the belt
       const team = await prisma.team.findUnique({ where: { id: opponent.roster_id.toString() } });
-      const newBeltHolder: BeltHolder = {
+      const newBeltHolder: Omit<BeltHolder, 'id' | 'createdAt'> = {
         teamId: opponent.roster_id.toString(),
         teamName: team?.name || 'Unknown Team',
         weekAcquired: currentWeek,
         currentStreak: 1,
       };
-  
-      await prisma.beltHolder.create({ data: newBeltHolder });
-      await updateLongestStreak(newBeltHolder);
-  
-      return newBeltHolder;
+
+      return prisma.beltHolder.create({ data: newBeltHolder });
     } else {
       // The belt holder retained the belt
-      const updatedBeltHolder: BeltHolder = {
-        ...previousBeltHolder,
+      const updatedBeltHolder: Omit<BeltHolder, 'id' | 'createdAt'> = {
+        teamId: previousBeltHolder.teamId,
+        teamName: previousBeltHolder.teamName,
+        weekAcquired: previousBeltHolder.weekAcquired,
         currentStreak: previousBeltHolder.currentStreak + 1,
       };
-  
-      await prisma.beltHolder.create({ data: updatedBeltHolder });
-      await updateLongestStreak(updatedBeltHolder);
-  
-      return updatedBeltHolder;
+
+      return prisma.beltHolder.create({ data: updatedBeltHolder });
     }
   }
   
@@ -88,21 +86,21 @@ interface BeltHolder {
       acc[matchup.roster_id] = matchup.points;
       return acc;
     }, {});
-  
+
     const highestScoringTeamId = Object.entries(teamScores).reduce((a, b) => teamScores[a[0]] > teamScores[b[0]] ? a : b)[0];
-  
+
     const team = await prisma.team.findUnique({ where: { id: highestScoringTeamId } });
-    const initialBeltHolder: BeltHolder = {
+    const initialBeltHolder: Omit<BeltHolder, 'id' | 'createdAt'> = {
       teamId: highestScoringTeamId,
       teamName: team?.name || 'Unknown Team',
       weekAcquired: currentWeek,
       currentStreak: 1,
     };
-  
-    await prisma.beltHolder.create({ data: initialBeltHolder });
-    await updateLongestStreak(initialBeltHolder);
-  
-    return initialBeltHolder;
+
+    const createdBeltHolder = await prisma.beltHolder.create({ data: initialBeltHolder });
+    await updateLongestStreak(createdBeltHolder);
+
+    return createdBeltHolder;
   }
   
   async function updateLongestStreak(currentBeltHolder: BeltHolder): Promise<void> {
