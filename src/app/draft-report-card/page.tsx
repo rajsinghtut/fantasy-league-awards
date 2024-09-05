@@ -12,7 +12,7 @@ export default async function DraftReportCard() {
         {draftResults.map((team: any, index: number) => (
           <Card key={index}>
             <CardHeader className="flex flex-row items-center space-x-4">
-              {team.avatar && (
+              {team.avatar ? (
                 <Image
                   src={`https://sleepercdn.com/avatars/${team.avatar}`}
                   alt={`${team.teamName} avatar`}
@@ -20,6 +20,8 @@ export default async function DraftReportCard() {
                   height={48}
                   className="rounded-full"
                 />
+              ) : (
+                <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
               )}
               <CardTitle>{team.teamName}</CardTitle>
             </CardHeader>

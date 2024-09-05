@@ -43,7 +43,7 @@ export async function getDraftResults() {
       const team = teams.find((t: any) => t.id === evaluation.teamId);
       return {
         ...evaluation,
-        avatar: team?.avatar
+        avatar: team?.avatar || null // Ensure avatar is null if not found
       };
     });
   }
@@ -70,7 +70,14 @@ export async function getDraftResults() {
   });
 
   const teamDrafts = groupPicksByTeam(draftPicks);
-  return await evaluateDrafts(teamDrafts, teams);
+  const evaluations = await evaluateDrafts(teamDrafts, teams);
+  return evaluations.map((evaluation: any) => {
+    const team = teams.find((t: any) => t.id === evaluation.teamId);
+    return {
+      ...evaluation,
+      avatar: team?.avatar || null // Ensure avatar is null if not found
+    };
+  });
 }
 
 function groupPicksByTeam(draftPicks: any) {
