@@ -10,7 +10,6 @@ export async function getDraftResults() {
 
   const draftResponse = await fetch(`https://api.sleeper.app/v1/draft/${draftId}/picks`);
   const draftPicks = await draftResponse.json();
-  console.log(draftPicks);
 
   const teamDrafts = groupPicksByTeam(draftPicks);
   const evaluatedDrafts = await evaluateDrafts(teamDrafts);
