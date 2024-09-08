@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { PrismaClient } from '@prisma/client';
+// Removed unused imports: LeagueSettings, RosterSettings, User
 
 const LEAGUE_ID = '1124820424132165632';
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -184,4 +185,53 @@ export async function getWeeklyAwards() {
     'Least Points Scored': 'Team Underdog',
     'Closest Match': 'Team Lucky vs Team Unlucky'
   }
+}
+
+// Add new function to fetch power rankings data
+export async function fetchPowerRankingsData(leagueId: string): Promise<any> {
+  try {
+    const users = await fetchUsers(leagueId);
+    const rosters = await fetchRosters(leagueId);
+    const leagueInfo = await fetchLeagueInfo(leagueId);
+
+    // Combine user and roster data
+    const powerRankingsData = rosters.map(roster => {
+      const user = users.find(u => u.user_id === roster.owner_id);
+      return {
+        userId: user?.user_id || '',
+        username: user?.display_name || 'Unknown',
+        avatar: user?.avatar || '',
+        wins: roster.settings.wins,
+        losses: roster.settings.losses,
+        ties: roster.settings.ties,
+        points: roster.settings.fpts + (roster.settings.fpts_decimal / 100),
+      };
+    });
+
+    return {
+      rankings: powerRankingsData,
+      leagueInfo: {
+        name: leagueInfo.name,
+        season: leagueInfo.season,
+      },
+    };
+  } catch (error) {
+    console.error('Error fetching power rankings data:', error);
+    throw error;
+  }
+}
+
+async function fetchUsers(leagueId: string): Promise<any[]> {
+  const response = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
+  return response.json();
+}
+
+async function fetchRosters(leagueId: string): Promise<any[]> {
+  const response = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
+  return response.json();
+}
+
+async function fetchLeagueInfo(leagueId: string): Promise<any> {
+  const response = await fetch(`https://api.sleeper.app/v1/league/${leagueId}`);
+  return response.json();
 }

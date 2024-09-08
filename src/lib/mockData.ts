@@ -34,27 +34,33 @@ export const mockFunMetrics: FunMetrics = {
   teamToWatch: { team: 'Team Delta', reason: 'Improving performance' },
 };
 
-export const mockPastWeeklyRankings: WeeklyRankings[] = [
+export const mockPastWeeklyRankings: { week: number; rankings: PowerRanking[]; funMetrics: Record<string, any> }[] = [
   {
-    week: 6,
+    week: 1,
     rankings: [
-      { rank: 1, previousRank: 1, team: mockTeams[0] },
-      { rank: 2, previousRank: 3, team: mockTeams[2] },
-      { rank: 3, previousRank: 2, team: mockTeams[1] },
-      { rank: 4, previousRank: 4, team: mockTeams[4] },
-      { rank: 5, previousRank: 5, team: mockTeams[3] },
+      {
+        rank: 1,
+        previousRank: 2,
+        team: {
+          id: 'team1',
+          name: 'Team One',
+          avatar: 'avatar1.png',
+          wins: 10,
+          losses: 2,
+          pointsScored: 1200,
+          pointsProjected: 150, // Added this line
+        },
+        // ... other properties
+      },
+      // ... other rankings
     ],
-    funMetrics: { ...mockFunMetrics },
+    funMetrics: {
+      // ... metrics
+    },
   },
-  {
-    week: 5,
-    rankings: [
-      { rank: 1, previousRank: 2, team: mockTeams[0] },
-      { rank: 2, previousRank: 1, team: mockTeams[1] },
-      { rank: 3, previousRank: 4, team: mockTeams[2] },
-      { rank: 4, previousRank: 3, team: mockTeams[4] },
-      { rank: 5, previousRank: 5, team: mockTeams[3] },
-    ],
-    funMetrics: { ...mockFunMetrics },
-  },
+  // ... other weeks
+];
+
+export const mockPowerRankings = [
+  // mock data here
 ];

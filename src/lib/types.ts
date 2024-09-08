@@ -9,7 +9,7 @@ export interface Team {
 }
 
 export interface PowerRanking {
-  rank: number;
+  rank: number; // Add this line
   previousRank: number;
   team: Team;
 }
