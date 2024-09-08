@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 const LEAGUE_ID = '1124820424132165632';
 const prisma = new PrismaClient();
 
+// Interfaces for data structures
 interface BeltHolder {
     id: number;
     teamId: string;
@@ -18,12 +19,14 @@ interface BeltHolder {
     streak: number;
   }
   
+  // Helper function to get the current NFL week
   async function getCurrentWeek(): Promise<number> {
     const response = await fetch('https://api.sleeper.app/v1/state/nfl');
     const state = await response.json();
     return state.week;
   }
   
+  // Main function to update the belt holder based on the latest matchup results
   async function updateBeltHolder(currentWeek: number): Promise<BeltHolder | null> {
     const previousWeek = currentWeek - 1;
     const response = await fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID}/matchups/${previousWeek}`);
@@ -58,7 +61,7 @@ interface BeltHolder {
     }
   
     if (opponent.points > beltHolderMatchup.points) {
-      // The belt holder was defeated, pass the belt
+      // The belt holder was defeated, pass the belt to the opponent
       const team = await prisma.team.findUnique({ where: { id: opponent.roster_id.toString() } });
       const newBeltHolder: Omit<BeltHolder, 'id' | 'createdAt'> = {
         teamId: opponent.roster_id.toString(),
@@ -69,7 +72,7 @@ interface BeltHolder {
 
       return prisma.beltHolder.create({ data: newBeltHolder });
     } else {
-      // The belt holder retained the belt
+      // The belt holder retained the belt, update their streak
       const updatedBeltHolder: Omit<BeltHolder, 'id' | 'createdAt'> = {
         teamId: previousBeltHolder.teamId,
         teamName: previousBeltHolder.teamName,
@@ -81,6 +84,7 @@ interface BeltHolder {
     }
   }
   
+  // Function to assign the initial belt holder (highest scorer of the week)
   async function assignInitialBeltHolder(matchups: any[], currentWeek: number): Promise<BeltHolder> {
     const teamScores = matchups.reduce((acc: Record<string, number>, matchup: any) => {
       acc[matchup.roster_id] = matchup.points;
@@ -103,6 +107,7 @@ interface BeltHolder {
     return createdBeltHolder;
   }
   
+  // Function to update the longest streak record if necessary
   async function updateLongestStreak(currentBeltHolder: BeltHolder): Promise<void> {
     const longestStreak = await prisma.longestStreak.findFirst();
   
@@ -124,6 +129,7 @@ interface BeltHolder {
     }
   }
  
+  // Public function to get the current belt holder, updating if necessary
   export async function getBeltHolder(): Promise<BeltHolder | null> {
     const currentWeek = await getCurrentWeek();
     let beltHolder = await prisma.beltHolder.findFirst({
@@ -137,6 +143,7 @@ interface BeltHolder {
     return beltHolder;
   }
   
+  // Public function to get the longest streak record
   export async function getLongestStreak(): Promise<LongestStreak | null> {
     return prisma.longestStreak.findFirst();
   }
