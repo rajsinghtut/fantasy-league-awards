@@ -1,8 +1,6 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getBeltHolder, getLongestStreak } from '@/lib/pass-the-belt';
+import React, { useState, useEffect } from 'react';
 
 interface BeltHolder {
   teamId: string;
@@ -17,7 +15,7 @@ interface LongestStreak {
   streak: number;
 }
 
-export function PassTheBelt() {
+export default function PassTheBelt() {
   const [beltHolder, setBeltHolder] = useState<BeltHolder | null>(null);
   const [longestStreak, setLongestStreak] = useState<LongestStreak | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,62 +24,44 @@ export function PassTheBelt() {
   useEffect(() => {
     async function fetchData() {
       try {
-        setIsLoading(true);
-        const currentBeltHolder = await getBeltHolder();
-        const currentLongestStreak = await getLongestStreak();
-        setBeltHolder(currentBeltHolder);
-        setLongestStreak(currentLongestStreak);
+        const response = await fetch('/api/belt-holder');
+        if (!response.ok) {
+          throw new Error('Failed to fetch data');
+        }
+        const data = await response.json();
+        setBeltHolder(data.beltHolder);
+        setLongestStreak(data.longestStreak);
       } catch (err) {
-        setError('Failed to fetch data. Please try again later.');
+        setError('Error fetching data');
         console.error('Error fetching data:', err);
       } finally {
         setIsLoading(false);
       }
     }
+
     fetchData();
   }, []);
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-
-  if (error) {
-    return <div>Error: {error}</div>;
-  }
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle>Current Belt Holder</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {beltHolder ? (
-            <>
-              <p className="text-2xl font-bold">{beltHolder.teamName}</p>
-              <p>Acquired in Week {beltHolder.weekAcquired}</p>
-              <p>Current Streak: {beltHolder.currentStreak} week(s)</p>
-            </>
-          ) : (
-            <p>No current belt holder</p>
-          )}
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Longest Streak of the Season</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {longestStreak ? (
-            <>
-              <p className="text-2xl font-bold">{longestStreak.teamName}</p>
-              <p>Streak: {longestStreak.streak} week(s)</p>
-            </>
-          ) : (
-            <p>No longest streak recorded yet</p>
-          )}
-        </CardContent>
-      </Card>
+    <div>
+      <h2>Current Belt Holder</h2>
+      {beltHolder && (
+        <div>
+          <p>Team: {beltHolder.teamName}</p>
+          <p>Week Acquired: {beltHolder.weekAcquired}</p>
+          <p>Current Streak: {beltHolder.currentStreak}</p>
+        </div>
+      )}
+      <h2>Longest Streak</h2>
+      {longestStreak && (
+        <div>
+          <p>Team: {longestStreak.teamName}</p>
+          <p>Streak: {longestStreak.streak}</p>
+        </div>
+      )}
     </div>
   );
 }

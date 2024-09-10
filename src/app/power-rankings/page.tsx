@@ -6,7 +6,7 @@ import PowerRankingsTable from './PowerRankingsTable';
 const LEAGUE_ID = '1124820424132165632';
 
 // Add a constant to easily switch between mock and real data
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 export default async function PowerRankings() {
   let rankings;
