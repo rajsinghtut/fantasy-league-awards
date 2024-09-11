@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface BeltHolder {
   teamId: string;
@@ -46,22 +47,35 @@ export default function PassTheBelt() {
   if (error) return <div>Error: {error}</div>;
 
   return (
-    <div>
-      <h2>Current Belt Holder</h2>
-      {beltHolder && (
-        <div>
-          <p>Team: {beltHolder.teamName}</p>
-          <p>Week Acquired: {beltHolder.weekAcquired}</p>
-          <p>Current Streak: {beltHolder.currentStreak}</p>
-        </div>
-      )}
-      <h2>Longest Streak</h2>
-      {longestStreak && (
-        <div>
-          <p>Team: {longestStreak.teamName}</p>
-          <p>Streak: {longestStreak.streak}</p>
-        </div>
-      )}
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Current Belt Holder</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {beltHolder && (
+            <div className="space-y-2">
+              <p><strong>Team:</strong> {beltHolder.teamName}</p>
+              <p><strong>Week Acquired:</strong> {beltHolder.weekAcquired}</p>
+              <p><strong>Current Streak:</strong> {beltHolder.currentStreak}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Longest Streak</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {longestStreak && (
+            <div className="space-y-2">
+              <p><strong>Team:</strong> {longestStreak.teamName}</p>
+              <p><strong>Streak:</strong> {longestStreak.streak}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
