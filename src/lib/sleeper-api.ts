@@ -15,14 +15,23 @@ async function getTeamInfo() {
   }
 
   console.log('Fetching new team info');
-  const response = await fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID}/users`);
-  const users = await response.json();
+  const usersResponse = await fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID}/users`);
+  const users = await usersResponse.json();
 
-  const teams = users.map((user: any) => ({
-    id: user.user_id,
-    name: user.display_name,
-    avatar: user.avatar,
-  }));
+  const rostersResponse = await fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID}/rosters`);
+  const rosters = await rostersResponse.json();
+
+  const teams = users
+    .filter((user: any) => user.user_id !== '466784050778992640')
+    .map((user: any) => {
+      const roster = rosters.find((r: any) => r.owner_id === user.user_id);
+      return {
+        id: user.user_id,
+        name: user.display_name,
+        avatar: user.avatar,
+        roster_id: roster ? roster.roster_id.toString() : null,
+      };
+    });
 
   await prisma.team.createMany({
     data: teams,

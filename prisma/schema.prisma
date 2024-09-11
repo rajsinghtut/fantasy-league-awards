@@ -23,6 +23,7 @@ model Team {
   id        String   @id
   name      String
   avatar    String?
+  roster_id String   // Add this line
   createdAt DateTime @default(now())
 }
 
