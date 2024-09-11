@@ -33,7 +33,11 @@ async function getCurrentWeek(): Promise<number> {
 async function updateBeltHolder(currentWeek: number): Promise<BeltHolder | null> {
   console.log(`Updating belt holder for week ${currentWeek}`);
   const previousWeek = currentWeek - 1;
-  const response = await fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID}/matchups/${previousWeek}`);
+  console.log('Previous week:', previousWeek);
+  const url = `https://api.sleeper.app/v1/league/${LEAGUE_ID}/matchups/${previousWeek}`;
+  console.log('Fetching matchups from URL:', url);
+  const response = await fetch(url);
+  console.log('Response from Sleeper API:', response);
   const matchups = await response.json();
   console.log('Fetched matchups:', matchups);
 
@@ -71,14 +75,18 @@ async function updateBeltHolder(currentWeek: number): Promise<BeltHolder | null>
   if (opponent.points > beltHolderMatchup.points) {
     console.log('Belt holder was defeated, passing the belt to the opponent');
     const team = await prisma.team.findUnique({ where: { id: opponent.roster_id.toString() } });
+    if (!team) {
+      console.error(`Team not found for roster_id: ${opponent.roster_id}`);
+      return null;
+    }
     const newBeltHolder: Omit<BeltHolder, 'id' | 'createdAt'> = {
       teamId: opponent.roster_id.toString(),
-      teamName: team?.name || 'Unknown Team',
+      teamName: team.name,
       weekAcquired: currentWeek,
       currentStreak: 1,
     };
     console.log('New belt holder:', newBeltHolder);
-    return prisma.beltHolder.create({ data: { ...newBeltHolder, id: Number(opponent.roster_id) } }); // Ensure id is a number
+    return prisma.beltHolder.create({ data: { ...newBeltHolder, id: Number(opponent.roster_id) } });
   } else {
     console.log('Belt holder retained the belt, updating streak');
     const updatedBeltHolder: Omit<BeltHolder, 'id' | 'createdAt'> = {
@@ -104,10 +112,14 @@ async function assignInitialBeltHolder(matchups: any[], currentWeek: number): Pr
   console.log('Highest scoring team ID:', highestScoringTeamId);
 
   const team = await prisma.team.findUnique({ where: { id: highestScoringTeamId } });
+  if (!team) {
+    console.error(`Team not found for roster_id: ${highestScoringTeamId}`);
+    throw new Error('Team not found');
+  }
   const initialBeltHolder: BeltHolder = {
     id: Number(highestScoringTeamId), // Ensure id is a number
     teamId: highestScoringTeamId.toString(), // Ensure teamId is a string
-    teamName: team?.name || 'Unknown Team',
+    teamName: team.name,
     weekAcquired: currentWeek,
     currentStreak: 1,
     createdAt: new Date(),

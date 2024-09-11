@@ -235,3 +235,23 @@ async function fetchLeagueInfo(leagueId: string): Promise<any> {
   const response = await fetch(`https://api.sleeper.app/v1/league/${leagueId}`);
   return response.json();
 }
+
+// Add this function if it doesn't exist
+export async function populateTeams() {
+  const response = await fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID}/users`);
+  const users = await response.json();
+
+  for (const user of users) {
+    await prisma.team.upsert({
+      where: { id: user.user_id },
+      update: { name: user.display_name },
+      create: {
+        id: user.user_id,
+        name: user.display_name,
+        avatar: user.avatar,
+      },
+    });
+  }
+
+  console.log('Teams populated successfully');
+}
