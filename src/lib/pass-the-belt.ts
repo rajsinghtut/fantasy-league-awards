@@ -88,9 +88,11 @@ async function updateBeltHolder(currentWeek: number): Promise<BeltHolder | null>
       return previousBeltHolder;
     }
 
+    const team = await prisma.team.findFirst({ where: { roster_id: opponent.roster_id.toString() } });
+    console.log('Team:', team);
+
     if (opponent.points > beltHolderMatchup.points) {
       console.log('Belt holder was defeated, passing the belt to the opponent');
-      const team = await prisma.team.findUnique({ where: { id: opponent.roster_id.toString() } });
       const newBeltHolder: Omit<BeltHolder, 'id' | 'createdAt'> = {
         teamId: opponent.roster_id.toString(),
         teamName: team?.name || 'Unknown Team',
@@ -124,13 +126,13 @@ async function assignInitialBeltHolder(matchups: any[], currentWeek: number): Pr
   }, {});
   console.log('Team scores:', teamScores);
 
-  const highestScoringTeamId = Object.entries(teamScores).reduce((a, b) => teamScores[a[0]] > teamScores[b[0]] ? a : b)[0];
-  console.log('Highest scoring team ID:', highestScoringTeamId);
+  const highestScoringRosterId = Object.entries(teamScores).reduce((a, b) => teamScores[a[0]] > teamScores[b[0]] ? a : b)[0];
+  console.log('Highest scoring team ID:', highestScoringRosterId);
 
-  const team = await prisma.team.findUnique({ where: { id: highestScoringTeamId } });
+  const team = await prisma.team.findFirst({ where: { roster_id: highestScoringRosterId.toString() } });
   const initialBeltHolder: BeltHolder = {
-    id: Number(highestScoringTeamId), // Ensure id is a number
-    teamId: highestScoringTeamId.toString(), // Ensure teamId is a string
+    id: Number(highestScoringRosterId), // Ensure id is a number
+    teamId: highestScoringRosterId.toString(), // Ensure teamId is a string
     teamName: team?.name || 'Unknown Team',
     weekAcquired: currentWeek,
     currentStreak: 1,
