@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import axios from 'axios';
 
 // Add these type definitions at the top of the file
 type BeltHolder = {
@@ -33,62 +34,85 @@ async function getCurrentWeek(): Promise<number> {
 async function updateBeltHolder(currentWeek: number): Promise<BeltHolder | null> {
   console.log(`Updating belt holder for week ${currentWeek}`);
   const previousWeek = currentWeek - 1;
-  const response = await fetch(`https://api.sleeper.app/v1/league/${LEAGUE_ID}/matchups/${previousWeek}`);
-  const matchups = await response.json();
-  console.log('Fetched matchups:', matchups);
 
-  const previousBeltHolder = await prisma.beltHolder.findFirst({
-    orderBy: { weekAcquired: 'desc' },
-  });
-  console.log('Previous belt holder:', previousBeltHolder);
+  const url = `https://api.sleeper.app/v1/league/${LEAGUE_ID}/matchups/${previousWeek}`;
+  console.log('Fetching from URL:', url);
 
-  if (!previousBeltHolder) {
-    console.log('No previous belt holder, assigning initial belt holder');
-    return assignInitialBeltHolder(matchups, currentWeek);
-  }
+  try {
+    const response = await axios.get(url, {
+      headers: {
+        'Accept-Encoding': 'identity'
+      },
+      decompress: false // This tells axios not to automatically decompress the response
+    });
 
-  const beltHolderMatchup = matchups.find((matchup: any) => 
-    matchup.roster_id.toString() === previousBeltHolder.teamId
-  );
-  console.log('Belt holder matchup:', beltHolderMatchup);
+    console.log('Response status:', response.status);
+    console.log('Response headers:', response.headers);
 
-  if (!beltHolderMatchup) {
-    console.error("Couldn't find the belt holder's matchup");
-    return previousBeltHolder;
-  }
+    const matchups = response.data;
+    console.log('Parsed matchups:', matchups);
 
-  const opponent = matchups.find((matchup: any) => 
-    matchup.matchup_id === beltHolderMatchup.matchup_id && 
-    matchup.roster_id.toString() !== previousBeltHolder.teamId
-  );
-  console.log('Opponent matchup:', opponent);
+    if (!Array.isArray(matchups) || matchups.length === 0) {
+      console.error('Unexpected matchups format or empty array');
+      return null;
+    }
 
-  if (!opponent) {
-    console.error("Couldn't find the belt holder's opponent");
-    return previousBeltHolder;
-  }
+    const previousBeltHolder = await prisma.beltHolder.findFirst({
+      orderBy: { weekAcquired: 'desc' },
+    });
+    console.log('Previous belt holder:', previousBeltHolder);
 
-  if (opponent.points > beltHolderMatchup.points) {
-    console.log('Belt holder was defeated, passing the belt to the opponent');
-    const team = await prisma.team.findUnique({ where: { id: opponent.roster_id.toString() } });
-    const newBeltHolder: Omit<BeltHolder, 'id' | 'createdAt'> = {
-      teamId: opponent.roster_id.toString(),
-      teamName: team?.name || 'Unknown Team',
-      weekAcquired: currentWeek,
-      currentStreak: 1,
-    };
-    console.log('New belt holder:', newBeltHolder);
-    return prisma.beltHolder.create({ data: { ...newBeltHolder, id: Number(opponent.roster_id) } }); // Ensure id is a number
-  } else {
-    console.log('Belt holder retained the belt, updating streak');
-    const updatedBeltHolder: Omit<BeltHolder, 'id' | 'createdAt'> = {
-      teamId: previousBeltHolder.teamId,
-      teamName: previousBeltHolder.teamName,
-      weekAcquired: previousBeltHolder.weekAcquired,
-      currentStreak: previousBeltHolder.currentStreak + 1,
-    };
-    console.log('Updated belt holder:', updatedBeltHolder);
-    return prisma.beltHolder.create({ data: { ...updatedBeltHolder, id: Number(previousBeltHolder.id) } }); // Ensure id is a number
+    if (!previousBeltHolder) {
+      console.log('No previous belt holder, assigning initial belt holder');
+      return assignInitialBeltHolder(matchups, currentWeek);
+    }
+
+    const beltHolderMatchup = matchups.find((matchup: any) => 
+      matchup.roster_id.toString() === previousBeltHolder.teamId
+    );
+    console.log('Belt holder matchup:', beltHolderMatchup);
+
+    if (!beltHolderMatchup) {
+      console.error("Couldn't find the belt holder's matchup");
+      return previousBeltHolder;
+    }
+
+    const opponent = matchups.find((matchup: any) => 
+      matchup.matchup_id === beltHolderMatchup.matchup_id && 
+      matchup.roster_id.toString() !== previousBeltHolder.teamId
+    );
+    console.log('Opponent matchup:', opponent);
+
+    if (!opponent) {
+      console.error("Couldn't find the belt holder's opponent");
+      return previousBeltHolder;
+    }
+
+    if (opponent.points > beltHolderMatchup.points) {
+      console.log('Belt holder was defeated, passing the belt to the opponent');
+      const team = await prisma.team.findUnique({ where: { id: opponent.roster_id.toString() } });
+      const newBeltHolder: Omit<BeltHolder, 'id' | 'createdAt'> = {
+        teamId: opponent.roster_id.toString(),
+        teamName: team?.name || 'Unknown Team',
+        weekAcquired: currentWeek,
+        currentStreak: 1,
+      };
+      console.log('New belt holder:', newBeltHolder);
+      return prisma.beltHolder.create({ data: { ...newBeltHolder, id: Number(opponent.roster_id) } }); // Ensure id is a number
+    } else {
+      console.log('Belt holder retained the belt, updating streak');
+      const updatedBeltHolder: Omit<BeltHolder, 'id' | 'createdAt'> = {
+        teamId: previousBeltHolder.teamId,
+        teamName: previousBeltHolder.teamName,
+        weekAcquired: previousBeltHolder.weekAcquired,
+        currentStreak: previousBeltHolder.currentStreak + 1,
+      };
+      console.log('Updated belt holder:', updatedBeltHolder);
+      return prisma.beltHolder.create({ data: { ...updatedBeltHolder, id: Number(previousBeltHolder.id) } }); // Ensure id is a number
+    }
+  } catch (error) {
+    console.error('Error fetching matchups:', error);
+    return null;
   }
 }
 
