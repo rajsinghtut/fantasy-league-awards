@@ -1,4 +1,4 @@
 {
-  "buildCommand": " npx prisma migrate reset && prisma generate && next build",
+  "buildCommand": "prisma generate && next build",
   "installCommand": "npm install"
 }
